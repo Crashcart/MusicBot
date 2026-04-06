@@ -1,0 +1,29 @@
+{
+  "name": "musicbot",
+  "version": "1.0.0",
+  "description": "AI-Driven Discord Plex Bot",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@discordjs/voice": "^0.17.0",
+    "axios": "^1.7.0",
+    "better-sqlite3": "^10.0.0",
+    "castv2-client": "^1.2.0",
+    "discord.js": "^14.15.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.27.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.10",
+    "@types/castv2-client": "^1.2.2",
+    "@types/node": "^20.12.0",
+    "tsx": "^4.10.0",
+    "typescript": "^5.4.5"
+  }
+}

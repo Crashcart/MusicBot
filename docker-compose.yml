@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: musicbot-core
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data  # SQLite database mount
+    depends_on:
+      - web
+    # Uncomment to enable host networking for mDNS/Chromecast discovery
+    # network_mode: "host"
+
+  web:
+    build: .
+    command: npm run start:web # TBD in package.json
+    container_name: musicbot-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+
+  # Optional AI Profile
+  ollama:
+    image: ollama/ollama:latest
+    container_name: musicbot-ollama
+    restart: unless-stopped
+    profiles:
+      - ai-enabled
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama_data:/root/.ollama
+    # Uncomment deploy block if you have NVIDIA GPU for hardware acceleration
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
