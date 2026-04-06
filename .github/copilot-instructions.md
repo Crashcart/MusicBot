@@ -187,3 +187,17 @@ When processing issues, tasks, or a backlog — **always work in priority order,
 - Finish and commit the current in-progress item
 - Write a summary of remaining work as a comment or in `task.md`
 - Do **not** start a new large task that cannot be completed
+
+**Issue lifecycle:**
+- **Never close an issue.** Only the project owner closes issues. AI agents may comment on issues, add fix details, and reference commits — but must leave the issue open.
+- When a fix is committed, note the commit hash and what was changed in a comment on the issue. Do **not** use `fixes #N` or `closes #N` in commit messages.
+
+### Session Startup — Issue Queue Review
+
+**At the start of every conversation**, the AI agent must:
+1. Check the open issues on `Crashcart/MusicBot` (via the GitHub issues page)
+2. Triage them using the priority rules above (Critical → High → Medium → Low)
+3. Present a brief summary of open issues and their assessed priority to the user
+4. Ask the user if they want to work on any of them, or if they have a different task
+
+This ensures the issue backlog is never forgotten and critical items are surfaced immediately.
