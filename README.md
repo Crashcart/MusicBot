@@ -6,17 +6,17 @@ A highly modular, autonomous Discord music interface that streams high-fidelity 
 
 **Install:**
 ```bash
-sudo bash <(curl -sL https://raw.githubusercontent.com/Crashcart/MusicBot/main/install.sh)
+curl -sL https://raw.githubusercontent.com/Crashcart/MusicBot/main/install.sh | sudo bash
 ```
 
 **Update:**
 ```bash
-sudo bash <(curl -sL https://raw.githubusercontent.com/Crashcart/MusicBot/main/upgrade.sh)
+curl -sL https://raw.githubusercontent.com/Crashcart/MusicBot/main/upgrade.sh | sudo bash
 ```
 
 **Uninstall:**
 ```bash
-sudo bash <(curl -sL https://raw.githubusercontent.com/Crashcart/MusicBot/main/uninstall.sh)
+curl -sL https://raw.githubusercontent.com/Crashcart/MusicBot/main/uninstall.sh | sudo bash
 ```
 
 > Requires Docker on a Linux host. Scripts install to `/opt/musicbot`.

@@ -6,7 +6,7 @@ echo "    MusicBot Installation Script      "
 echo "======================================"
 
 if [[ "$EUID" -ne 0 ]]; then 
-  echo "Please run this script as root (sudo bash <(curl ...))"
+  echo "Please run this script as root (curl -sL <url> | sudo bash)"
   exit 1
 fi
 

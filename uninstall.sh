@@ -16,7 +16,7 @@ if [ ! -d "$INSTALL_DIR" ]; then
     exit 1
 fi
 
-read -p "Are you sure you want to permanently delete MusicBot and all data? (y/N) " -n 1 -r
+read -p "Are you sure you want to permanently delete MusicBot and all data? (y/N) " -n 1 -r REPLY < /dev/tty
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
