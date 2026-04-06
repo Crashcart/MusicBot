@@ -43,7 +43,7 @@ startWebPortal().then(() => {
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 if (DISCORD_TOKEN && DISCORD_TOKEN !== 'your_discord_bot_token') {
   client.login(DISCORD_TOKEN).catch(err => {
-    logger.error('Failed to login to Discord', err);
+    logger.error({ err }, 'Failed to login to Discord');
   });
 } else {
   logger.warn('No valid DISCORD_TOKEN found in .env. Bot will not connect to Discord.');

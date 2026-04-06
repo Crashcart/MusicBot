@@ -45,7 +45,7 @@ fastify.post('/auth/plex/pin', async (request, reply) => {
       authUrl: `https://app.plex.tv/auth#?clientID=${PLEX_CLIENT_IDENTIFIER}&code=${code}&context[device][product]=MusicBot`
     });
   } catch (error) {
-    fastify.log.error('Failed to request Plex PIN', error);
+    fastify.log.error({ err: error }, 'Failed to request Plex PIN');
     return reply.status(500).send({ error: 'Failed to communicate with Plex API' });
   }
 });
@@ -76,7 +76,7 @@ fastify.get('/auth/plex/pin/:id/status', async (request: any, reply) => {
 
     return reply.send({ status: 'pending' });
   } catch (error) {
-    fastify.log.error('Failed to check Plex PIN status', error);
+    fastify.log.error({ err: error }, 'Failed to check Plex PIN status');
     return reply.status(500).send({ error: 'Failed to verify PIN status' });
   }
 });
