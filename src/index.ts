@@ -1,7 +1,6 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import * as dotenv from 'dotenv';
 import pino from 'pino';
-import { startWebPortal } from './web/server';
 import { createLidarrClient } from './integrations/lidarr-client';
 import { registerCommands, setupCommandListener } from './commands/command-handler';
 
@@ -33,11 +32,6 @@ client.once('ready', async () => {
 
 // Set up command interaction listener
 setupCommandListener(client, lidarrClient);
-
-// Start Web Portal
-startWebPortal().then(() => {
-  logger.info('Web Portal started successfully alongside bot.');
-});
 
 // Start Discord Bot
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;

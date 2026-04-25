@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "start:web": "node dist/web/server.js",
+    "dev": "tsx src/index.ts",
+    "dev:web": "tsx src/web/server.ts"
   },
   "dependencies": {
     "@discordjs/voice": "^0.17.0",

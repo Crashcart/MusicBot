@@ -20,6 +20,13 @@ curl -sL https://raw.githubusercontent.com/Crashcart/MusicBot/main/uninstall.sh 
 ```
 
 > Requires Docker on a Linux host. Scripts install to `/opt/musicbot`.
+>
+> Always use the `curl ... | sudo bash` form above. The `sudo bash <(curl ...)`
+> process-substitution form fails inside `sudo su -` shells with
+> `bash: /dev/fd/63: No such file or directory`.
+>
+> If host port `3000` is already taken, the installer will pick the next free
+> port in `3000-3099` and write it to `/opt/musicbot/.env` as `WEB_PORT`.
 
 ## 🛠️ Manual Installation
 
