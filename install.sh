@@ -4,20 +4,27 @@ set -e
 echo "======================================"
 echo "    MusicBot Installation Script      "
 echo "======================================"
+echo "Starting installation at: $(date)"
+echo "System: $(uname -a)"
 
 if [[ "$EUID" -ne 0 ]]; then
-  echo "Please run this script as root (curl -sL <url> | sudo bash)"
+  echo "ERROR: Please run this script as root (curl -sL <url> | sudo bash)"
   exit 1
 fi
 
 if ! command -v docker &> /dev/null; then
-    echo "Error: Docker is not installed. Please install Docker first."
+    echo "ERROR: Docker is not installed. Please install Docker first."
+    echo "  See: https://docs.docker.com/get-docker/"
     exit 1
+else
+    echo "✓ Docker found: $(docker --version)"
 fi
 
 if ! command -v git &> /dev/null; then
-    echo "Error: git is not installed. Please install git first."
+    echo "ERROR: git is not installed. Please install git first."
     exit 1
+else
+    echo "✓ Git found: $(git --version)"
 fi
 
 INSTALL_DIR="/opt/musicbot"
@@ -55,34 +62,41 @@ port_in_use() {
 # Detect a free host port for the web portal, starting at 3000.
 pick_free_port() {
     local candidate=3000
+    echo "Scanning for free port in range 3000-3099..." >&2
     while [ "$candidate" -lt 3100 ]; do
         port_in_use "$candidate"
         local rc=$?
         if [ "$rc" -eq 1 ]; then
+            echo "✓ Found free port: $candidate" >&2
             echo "$candidate"
             return 0
         fi
         if [ "$rc" -eq 2 ]; then
             # No detection method available; trust default and let docker surface a real conflict.
-            echo "Notice: cannot probe ports (no lsof or /proc/net/tcp). Assuming $candidate is free." >&2
+            echo "⚠ Warning: cannot probe ports (no lsof or /proc/net/tcp). Assuming port $candidate is free." >&2
             echo "$candidate"
             return 0
         fi
         candidate=$((candidate + 1))
     done
+    echo "ERROR: No free ports in range 3000-3099" >&2
     echo ""
     return 1
 }
 
 WEB_PORT="$(pick_free_port || true)"
 if [ -z "$WEB_PORT" ]; then
-    echo "Error: no free port found in range 3000-3099 for the web portal."
-    echo "       Free a port or set WEB_PORT manually in /opt/musicbot/.env after install."
+    echo ""
+    echo "ERROR: No free ports in range 3000-3099 for the web portal."
+    echo "       Free a port manually and retry, or set WEB_PORT manually in .env after install."
+    echo ""
+    echo "       To find what's using your ports:"
+    echo "       $ sudo lsof -iTCP:3000-3100 -sTCP:LISTEN"
     exit 1
 fi
 
 if [ "$WEB_PORT" != "3000" ]; then
-    echo "Notice: port 3000 is in use. Web portal will listen on host port $WEB_PORT."
+    echo "ℹ Port 3000 is in use. Web portal will listen on host port $WEB_PORT."
 fi
 
 # If anything fails after we clone, roll back so re-running install works cleanly.
@@ -100,13 +114,24 @@ cleanup_on_failure() {
 }
 trap cleanup_on_failure EXIT
 
+echo ""
 echo "-> Cloning repository into $INSTALL_DIR..."
-git clone "$REPO_URL" "$INSTALL_DIR"
+if ! git clone "$REPO_URL" "$INSTALL_DIR"; then
+    echo "ERROR: Failed to clone repository from $REPO_URL"
+    exit 1
+fi
+echo "✓ Repository cloned successfully"
 
-cd "$INSTALL_DIR"
+cd "$INSTALL_DIR" || exit 1
 
+echo ""
 echo "-> Setting up environment variables..."
+if [ ! -f ".env.example" ]; then
+    echo "ERROR: .env.example not found in cloned repository"
+    exit 1
+fi
 cp .env.example .env
+echo "✓ Created .env from .env.example"
 # Persist the chosen host port so docker compose picks it up.
 if grep -q '^WEB_PORT=' .env; then
     sed -i "s/^WEB_PORT=.*/WEB_PORT=${WEB_PORT}/" .env
@@ -116,24 +141,37 @@ fi
 echo "Notice: A default .env file has been created at $INSTALL_DIR/.env."
 echo "        Update DISCORD_TOKEN and Lidarr settings before the bot will be useful."
 
+echo ""
 echo "-> Starting core Docker containers..."
-docker compose up -d bot web
+if ! docker compose up -d bot web; then
+    echo "ERROR: Failed to start Docker containers"
+    docker compose logs --tail=20 2>&1 | sed 's/^/  /'
+    exit 1
+fi
+echo "✓ Docker containers started"
 
 # Disable rollback before health check: if a container is unhealthy because of a
 # placeholder DISCORD_TOKEN, we want the install to stay in place so the user can
 # edit .env, not get rolled back.
 trap - EXIT
 
-echo "-> Verifying containers..."
+echo ""
+echo "-> Verifying containers (waiting 5 seconds for startup)..."
 sleep 5
 unhealthy=""
 for container in musicbot-core musicbot-web; do
-    state="$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null || echo unknown)"
-    if [ "$state" = "true" ]; then
-        echo "  ✓ $container is running"
+    if docker inspect "$container" >/dev/null 2>&1; then
+        state="$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null || echo unknown)"
+        if [ "$state" = "true" ]; then
+            echo "  ✓ $container is running"
+        else
+            echo "  ✗ $container is not running (state: $state)"
+            echo "    Recent logs:"
+            docker logs --tail=10 "$container" 2>&1 | sed 's/^/      /' || true
+            unhealthy="$unhealthy $container"
+        fi
     else
-        echo "  ✗ $container is not running (state: $state)"
-        docker logs --tail=15 "$container" 2>&1 | sed 's/^/    /' || true
+        echo "  ✗ $container does not exist"
         unhealthy="$unhealthy $container"
     fi
 done
@@ -146,8 +184,24 @@ echo "======================================"
 
 if [ -n "$unhealthy" ]; then
     echo ""
-    echo "⚠ The following containers are not running:$unhealthy"
-    echo "  This is normal on first install if DISCORD_TOKEN/LIDARR_API_KEY"
-    echo "  are still placeholders. Edit /opt/musicbot/.env and run:"
-    echo "    cd /opt/musicbot && docker compose up -d"
+    echo "⚠ Warning: Some containers are not running:$unhealthy"
+    echo ""
+    echo "  This is NORMAL on first install if DISCORD_TOKEN or LIDARR_API_KEY"
+    echo "  are still placeholder values."
+    echo ""
+    echo "  To fix:"
+    echo "  1. Edit $INSTALL_DIR/.env and set real values:"
+    echo "     DISCORD_TOKEN=your_actual_token"
+    echo "     LIDARR_URL=http://your-lidarr-url"
+    echo "     LIDARR_API_KEY=your_lidarr_api_key"
+    echo ""
+    echo "  2. Restart the containers:"
+    echo "     cd $INSTALL_DIR && docker compose up -d"
+    echo ""
+    echo "  3. Check logs if still failing:"
+    echo "     docker logs musicbot-core"
+    echo "     docker logs musicbot-web"
+else
+    echo ""
+    echo "✓ All containers are healthy and ready to use!"
 fi
