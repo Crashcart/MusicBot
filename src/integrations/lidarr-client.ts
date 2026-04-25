@@ -119,11 +119,23 @@ export class LidarrApiError extends Error {
  * Returns null if LIDARR_URL or LIDARR_API_KEY are not set.
  */
 export function createLidarrClient(): LidarrClient | null {
-  const baseUrl = process.env.LIDARR_URL;
-  const apiKey = process.env.LIDARR_API_KEY;
+  // Prefer values from the runtime config (managed by the web portal).
+  // Fall back to env vars for backward compatibility with .env-only setups.
+  let baseUrl = process.env.LIDARR_URL;
+  let apiKey = process.env.LIDARR_API_KEY;
 
-  if (!baseUrl || !apiKey) {
-    logger.warn('LIDARR_URL or LIDARR_API_KEY not set — Lidarr integration disabled');
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { readConfig } = require('../web/services/config-store');
+    const cfg = readConfig();
+    if (cfg.lidarr?.url) baseUrl = cfg.lidarr.url;
+    if (cfg.lidarr?.apiKey) apiKey = cfg.lidarr.apiKey;
+  } catch {
+    // config-store unavailable — env-only fallback is fine.
+  }
+
+  if (!baseUrl || !apiKey || apiKey === 'your_lidarr_api_key') {
+    logger.warn('Lidarr URL or API key not configured — Lidarr integration disabled. Set via web portal.');
     return null;
   }
 

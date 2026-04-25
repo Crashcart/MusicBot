@@ -138,8 +138,29 @@ if grep -q '^WEB_PORT=' .env; then
 else
     echo "WEB_PORT=${WEB_PORT}" >> .env
 fi
+
+# Generate a random ADMIN_PASSWORD for the web portal so the install is secure
+# by default. The user can change it later in .env.
+ADMIN_PASSWORD="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24 || true)"
+if [ -z "$ADMIN_PASSWORD" ]; then
+    ADMIN_PASSWORD="changeme-please-set-in-env"
+fi
+if grep -q '^ADMIN_PASSWORD=' .env; then
+    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${ADMIN_PASSWORD}|" .env
+else
+    echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}" >> .env
+fi
+echo "✓ Generated random admin password (saved to .env)"
+
+# Create the persistent data directory shared between bot and web containers.
+# Holds config.json (runtime config) and logs/ (per-service log files).
+mkdir -p ./data/logs
+chmod 700 ./data
+echo "✓ Created data directory at $INSTALL_DIR/data/"
+
 echo "Notice: A default .env file has been created at $INSTALL_DIR/.env."
-echo "        Update DISCORD_TOKEN and Lidarr settings before the bot will be useful."
+echo "        Update DISCORD_TOKEN and Lidarr settings via the web portal,"
+echo "        or edit .env directly."
 
 echo ""
 echo "-> Starting core Docker containers..."
@@ -178,8 +199,14 @@ done
 
 echo "======================================"
 echo " Installation Complete! "
-echo " Portal: http://localhost:${WEB_PORT} "
+echo " Portal:    http://localhost:${WEB_PORT}"
 echo " Directory: $INSTALL_DIR"
+echo "======================================"
+echo ""
+echo " Admin password (also saved to $INSTALL_DIR/.env):"
+echo "   $ADMIN_PASSWORD"
+echo ""
+echo " Sign in at the portal and configure tokens via the UI."
 echo "======================================"
 
 if [ -n "$unhealthy" ]; then

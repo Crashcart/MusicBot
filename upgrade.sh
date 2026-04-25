@@ -20,6 +20,13 @@ fi
 
 cd "$INSTALL_DIR" || exit 1
 
+# Snapshot user data before pulling so we can recover if a bad upgrade corrupts it.
+if [ -d ./data ]; then
+    BACKUP_DIR="./data.backup-$(date +%Y%m%d-%H%M%S)"
+    echo "-> Snapshotting ./data to ${BACKUP_DIR}"
+    cp -a ./data "$BACKUP_DIR" || echo "  ⚠ snapshot failed — continuing anyway"
+fi
+
 echo ""
 echo "-> Pulling latest changes from Git..."
 if ! git pull origin main; then
@@ -28,6 +35,27 @@ if ! git pull origin main; then
     exit 1
 fi
 echo "✓ Git pull successful"
+
+# Reconcile new keys from .env.example into the existing .env without
+# clobbering user values. Adds any missing keys with their example defaults.
+if [ -f .env.example ] && [ -f .env ]; then
+    echo ""
+    echo "-> Reconciling .env with new keys from .env.example..."
+    while IFS= read -r line; do
+        case "$line" in
+            ''|\#*) continue ;;
+        esac
+        key="${line%%=*}"
+        if [ -n "$key" ] && ! grep -q "^${key}=" .env; then
+            echo "$line" >> .env
+            echo "  + added new key: $key"
+        fi
+    done < .env.example
+fi
+
+# Ensure the data layout is present (older installs predate /app/data/logs).
+mkdir -p ./data/logs
+chmod 700 ./data 2>/dev/null || true
 
 echo ""
 echo "-> Rebuilding Docker images and pulling updates..."

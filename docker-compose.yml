@@ -22,6 +22,9 @@ services:
     env_file:
       - path: .env
         required: false
+    volumes:
+      # Shared with bot: config.json + logs/ live here.
+      - ./data:/app/data
 
   # Optional AI Profile
   ollama:

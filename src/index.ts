@@ -3,10 +3,16 @@ import * as dotenv from 'dotenv';
 import { createLogger } from './utils/logger';
 import { createLidarrClient } from './integrations/lidarr-client';
 import { registerCommands, setupCommandListener } from './commands/command-handler';
+import { readConfig } from './web/services/config-store';
 
 dotenv.config();
 
 const logger = createLogger('discord-bot');
+
+// Runtime config managed by the web portal. Token from config.json takes
+// precedence over the .env DISCORD_TOKEN so changes via the UI take effect
+// on the next bot restart without the user having to edit files manually.
+const runtimeConfig = readConfig();
 
 // Initialise external service clients
 const lidarrClient = createLidarrClient();
@@ -30,7 +36,7 @@ client.once('ready', async () => {
 setupCommandListener(client, lidarrClient);
 
 // Start Discord Bot
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const DISCORD_TOKEN = runtimeConfig.discord.token || process.env.DISCORD_TOKEN;
 if (DISCORD_TOKEN && DISCORD_TOKEN !== 'your_discord_bot_token') {
   client.login(DISCORD_TOKEN).catch(err => {
     logger.error({

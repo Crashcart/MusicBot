@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MusicBot Admin</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Login screen -->
+    <section id="login-view" class="hidden">
+      <div class="login-card">
+        <h1>MusicBot</h1>
+        <p class="subtitle">Admin sign-in</p>
+        <form id="login-form">
+          <label for="password">Admin password</label>
+          <input id="password" type="password" autocomplete="current-password" required />
+          <button type="submit">Sign in</button>
+          <div id="login-error" class="error" role="alert"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Main app -->
+    <section id="main-view" class="hidden">
+      <header class="topbar">
+        <div class="brand">MusicBot Admin</div>
+        <nav>
+          <button class="tab-btn active" data-tab="config">Configuration</button>
+          <button class="tab-btn" data-tab="logs">Logs</button>
+          <button class="tab-btn" data-tab="plex">Plex Auth</button>
+        </nav>
+        <div class="topbar-actions">
+          <span id="auth-warning" class="warning hidden">⚠ No admin password set</span>
+          <button id="logout-btn" class="ghost">Sign out</button>
+        </div>
+      </header>
+
+      <!-- Configuration tab -->
+      <main id="tab-config" class="tab-panel active">
+        <h2>Configuration</h2>
+        <p class="hint">
+          Secrets are masked once saved. To change a secret, replace the masked
+          value with the new one. To leave a secret unchanged, do not edit it.
+        </p>
+        <form id="config-form">
+          <fieldset>
+            <legend>Discord</legend>
+            <label>Bot token
+              <input type="password" name="discord.token" autocomplete="off" />
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Lidarr</legend>
+            <label>URL
+              <input type="url" name="lidarr.url" placeholder="http://lidarr:8686" />
+            </label>
+            <label>API key
+              <input type="password" name="lidarr.apiKey" autocomplete="off" />
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Plex</legend>
+            <label>Client identifier
+              <input type="text" name="plex.clientIdentifier" />
+            </label>
+            <label>Server URL (optional)
+              <input type="url" name="plex.serverUrl" placeholder="http://plex:32400" />
+            </label>
+            <label>Token (optional — set via Plex Auth tab)
+              <input type="password" name="plex.token" autocomplete="off" />
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>Logging</legend>
+            <label>Log level
+              <select name="logging.level">
+                <option value="trace">trace</option>
+                <option value="debug">debug</option>
+                <option value="info" selected>info</option>
+                <option value="warn">warn</option>
+                <option value="error">error</option>
+                <option value="fatal">fatal</option>
+              </select>
+            </label>
+            <p class="hint">Changes apply on next service restart.</p>
+          </fieldset>
+
+          <div class="form-actions">
+            <button type="submit">Save changes</button>
+            <span id="config-status" class="status"></span>
+          </div>
+        </form>
+      </main>
+
+      <!-- Logs tab -->
+      <main id="tab-logs" class="tab-panel">
+        <h2>Logs</h2>
+        <div class="logs-toolbar">
+          <label>Service
+            <select id="log-service"></select>
+          </label>
+          <label>Lines
+            <input id="log-lines" type="number" min="10" max="5000" value="200" />
+          </label>
+          <button id="log-refresh">Refresh</button>
+          <label class="checkbox-label">
+            <input type="checkbox" id="log-stream" /> Live tail
+          </label>
+          <label>Filter
+            <input id="log-filter" type="text" placeholder="search…" />
+          </label>
+          <button id="log-clear" class="ghost">Clear view</button>
+        </div>
+        <div id="log-output" class="log-output"></div>
+      </main>
+
+      <!-- Plex Auth tab -->
+      <main id="tab-plex" class="tab-panel">
+        <h2>Plex Authentication</h2>
+        <p>Link a Plex account to MusicBot. The token will be stored in <code>config.json</code>.</p>
+        <button id="plex-start-btn">Start Plex login</button>
+        <div id="plex-status" class="status"></div>
+      </main>
+    </section>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

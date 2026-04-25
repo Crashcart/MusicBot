@@ -259,6 +259,32 @@ docker compose restart
 docker logs -f musicbot-core
 ```
 
+Or — easier — open the **Logs** tab in the web portal at
+`http://localhost:${WEB_PORT}` and toggle "Live tail".
+
+## Web Portal (Admin UI)
+
+The web portal exposes:
+
+- **Configuration** tab — edit Discord token, Lidarr URL/key, Plex client ID,
+  log level. Saved values live in `/opt/musicbot/data/config.json`.
+- **Logs** tab — read or live-tail per-service log files from
+  `/opt/musicbot/data/logs/*.log`.
+- **Plex Auth** tab — link a Plex account; the auth token is persisted to
+  `config.json` automatically.
+
+**Admin password** is read from `ADMIN_PASSWORD` in `.env`. The installer
+generates a random one on first install. To reset:
+
+```bash
+sudo sed -i 's/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=newpassword/' /opt/musicbot/.env
+sudo docker compose -f /opt/musicbot/docker-compose.yml restart web
+```
+
+If `ADMIN_PASSWORD` is empty or `changeme`, the portal runs **unprotected**
+and shows a banner warning. Don't expose an unprotected portal to the
+public internet.
+
 ## Getting Help
 
 When reporting issues, include:
