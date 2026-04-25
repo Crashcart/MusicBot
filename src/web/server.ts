@@ -15,6 +15,7 @@ const fastify = Fastify({
 
 const PLEX_CLIENT_IDENTIFIER = process.env.PLEX_CLIENT_IDENTIFIER || 'musicbot-default-id';
 const PORT = parseInt(process.env.PORT || '3000', 10);
+const PLEX_API_TIMEOUT_MS = 10_000;
 
 // In-memory store for demonstrations. We will move this to SQLite.
 const pinStore = new Map<string, any>();
@@ -26,9 +27,9 @@ fastify.get('/', async (request, reply) => {
 // Step 1: Request a PIN from Plex
 fastify.post('/auth/plex/pin', async (request, reply) => {
   try {
-    const response = await axios.post('https://plex.tv/api/v2/pins', {
-      strong: true
-    }, {
+    const response = await axios.post('https://plex.tv/api/v2/pins', null, {
+      params: { strong: true },
+      timeout: PLEX_API_TIMEOUT_MS,
       headers: {
         'X-Plex-Product': 'MusicBot',
         'X-Plex-Client-Identifier': PLEX_CLIENT_IDENTIFIER,
@@ -60,6 +61,7 @@ fastify.get('/auth/plex/pin/:id/status', async (request: any, reply) => {
 
   try {
     const response = await axios.get(`https://plex.tv/api/v2/pins/${pinId}`, {
+      timeout: PLEX_API_TIMEOUT_MS,
       headers: {
         'X-Plex-Client-Identifier': PLEX_CLIENT_IDENTIFIER,
         'Accept': 'application/json'

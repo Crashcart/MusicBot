@@ -8,8 +8,7 @@ services:
         required: false
     volumes:
       - ./data:/app/data  # SQLite database mount
-    depends_on:
-      - web
+    # bot and web are independent processes — no depends_on needed.
     # Uncomment to enable host networking for mDNS/Chromecast discovery
     # network_mode: "host"
 

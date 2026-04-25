@@ -28,11 +28,43 @@ if [ -d "$INSTALL_DIR" ]; then
     exit 1
 fi
 
+# Check whether a TCP port is bound on this host.
+# Tries lsof, then /proc/net/tcp{,6}. Returns 0 if in use, 1 if free, 2 if undetectable.
+port_in_use() {
+    local port="$1"
+
+    if command -v lsof &> /dev/null; then
+        lsof -iTCP:"$port" -sTCP:LISTEN -P -n >/dev/null 2>&1
+        return $?
+    fi
+
+    if [ -r /proc/net/tcp ]; then
+        local hex
+        hex=$(printf '%04X' "$port")
+        # Local address column is index 2: "IP:PORT" in hex. Match ":HEX " followed by state 0A (LISTEN).
+        if grep -E "^[[:space:]]*[0-9]+:[[:space:]]+[0-9A-F]+:${hex}[[:space:]]+[0-9A-F]+:[0-9A-F]+[[:space:]]+0A" \
+                /proc/net/tcp /proc/net/tcp6 >/dev/null 2>&1; then
+            return 0
+        fi
+        return 1
+    fi
+
+    return 2
+}
+
 # Detect a free host port for the web portal, starting at 3000.
 pick_free_port() {
     local candidate=3000
     while [ "$candidate" -lt 3100 ]; do
-        if ! (ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null) | awk '{print $4}' | grep -Eq "[:.]${candidate}\$"; then
+        port_in_use "$candidate"
+        local rc=$?
+        if [ "$rc" -eq 1 ]; then
+            echo "$candidate"
+            return 0
+        fi
+        if [ "$rc" -eq 2 ]; then
+            # No detection method available; trust default and let docker surface a real conflict.
+            echo "Notice: cannot probe ports (no lsof or /proc/net/tcp). Assuming $candidate is free." >&2
             echo "$candidate"
             return 0
         fi
@@ -59,7 +91,8 @@ cleanup_on_failure() {
     if [ "$exit_code" -ne 0 ] && [ -d "$INSTALL_DIR" ]; then
         echo ""
         echo "Installation failed (exit $exit_code). Rolling back $INSTALL_DIR..."
-        (cd "$INSTALL_DIR" && docker compose down -v --remove-orphans 2>/dev/null) || true
+        # Stop containers but DO NOT pass -v: that would wipe data volumes if anything was written.
+        (cd "$INSTALL_DIR" && docker compose down --remove-orphans 2>/dev/null) || true
         rm -rf "$INSTALL_DIR"
         echo "Rollback complete. You can safely re-run the installer."
     fi
@@ -86,10 +119,35 @@ echo "        Update DISCORD_TOKEN and Lidarr settings before the bot will be us
 echo "-> Starting core Docker containers..."
 docker compose up -d bot web
 
+# Disable rollback before health check: if a container is unhealthy because of a
+# placeholder DISCORD_TOKEN, we want the install to stay in place so the user can
+# edit .env, not get rolled back.
 trap - EXIT
+
+echo "-> Verifying containers..."
+sleep 5
+unhealthy=""
+for container in musicbot-core musicbot-web; do
+    state="$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null || echo unknown)"
+    if [ "$state" = "true" ]; then
+        echo "  ✓ $container is running"
+    else
+        echo "  ✗ $container is not running (state: $state)"
+        docker logs --tail=15 "$container" 2>&1 | sed 's/^/    /' || true
+        unhealthy="$unhealthy $container"
+    fi
+done
 
 echo "======================================"
 echo " Installation Complete! "
 echo " Portal: http://localhost:${WEB_PORT} "
 echo " Directory: $INSTALL_DIR"
 echo "======================================"
+
+if [ -n "$unhealthy" ]; then
+    echo ""
+    echo "⚠ The following containers are not running:$unhealthy"
+    echo "  This is normal on first install if DISCORD_TOKEN/LIDARR_API_KEY"
+    echo "  are still placeholders. Edit /opt/musicbot/.env and run:"
+    echo "    cd /opt/musicbot && docker compose up -d"
+fi
