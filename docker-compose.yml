@@ -4,7 +4,8 @@ services:
     container_name: musicbot-core
     restart: unless-stopped
     env_file:
-      - .env
+      - path: .env
+        required: false
     volumes:
       - ./data:/app/data  # SQLite database mount
     depends_on:
@@ -20,7 +21,8 @@ services:
     ports:
       - "${WEB_PORT:-3000}:3000"
     env_file:
-      - .env
+      - path: .env
+        required: false
 
   # Optional AI Profile
   ollama:
