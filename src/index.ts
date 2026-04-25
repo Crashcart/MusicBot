@@ -1,17 +1,12 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import * as dotenv from 'dotenv';
-import pino from 'pino';
-import { startWebPortal } from './web/server';
+import { createLogger } from './utils/logger';
 import { createLidarrClient } from './integrations/lidarr-client';
 import { registerCommands, setupCommandListener } from './commands/command-handler';
 
 dotenv.config();
 
-const logger = pino({
-  transport: {
-    target: 'pino-pretty'
-  }
-});
+const logger = createLogger('discord-bot');
 
 // Initialise external service clients
 const lidarrClient = createLidarrClient();
@@ -34,18 +29,38 @@ client.once('ready', async () => {
 // Set up command interaction listener
 setupCommandListener(client, lidarrClient);
 
-// Start Web Portal
-startWebPortal().then(() => {
-  logger.info('Web Portal started successfully alongside bot.');
-});
-
 // Start Discord Bot
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 if (DISCORD_TOKEN && DISCORD_TOKEN !== 'your_discord_bot_token') {
   client.login(DISCORD_TOKEN).catch(err => {
-    logger.error({ err }, 'Failed to login to Discord');
+    logger.error({
+      err,
+      tokenLength: DISCORD_TOKEN.length,
+      tokenPrefix: DISCORD_TOKEN.substring(0, 4),
+    }, 'Failed to login to Discord');
+    process.exit(1);
   });
 } else {
   logger.warn('No valid DISCORD_TOKEN found in .env. Bot will not connect to Discord.');
 }
+
+// Global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error({
+    err: reason,
+    promise: String(promise),
+    type: typeof reason,
+  }, 'Unhandled Promise Rejection');
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error({
+    err: error,
+    stack: error instanceof Error ? error.stack : 'N/A',
+    message: error instanceof Error ? error.message : String(error),
+  }, 'Uncaught Exception');
+  process.exit(1);
+});
+
+logger.info('Discord bot starting...');
 
