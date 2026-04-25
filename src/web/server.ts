@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { FastifyRequest } from 'fastify';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
 import { createLogger } from '../utils/logger';
@@ -15,8 +15,16 @@ const PLEX_CLIENT_IDENTIFIER = process.env.PLEX_CLIENT_IDENTIFIER || 'musicbot-d
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const PLEX_API_TIMEOUT_MS = 10_000;
 
-// In-memory store for demonstrations. We will move this to SQLite.
-const pinStore = new Map<string, any>();
+interface PlexPin {
+  id: number;
+  code: string;
+  expiresIn?: number;
+  expiresAt?: string;
+  authToken?: string | null;
+}
+
+// In-memory store for pending PIN authentications. Will move to SQLite.
+const pinStore = new Map<string, PlexPin>();
 
 fastify.get('/', async (request, reply) => {
   return { status: 'online', message: 'MusicBot Web Portal' };
@@ -62,7 +70,8 @@ fastify.post('/auth/plex/pin', async (request, reply) => {
 });
 
 // Step 2: Poll status of PIN
-fastify.get('/auth/plex/pin/:id/status', async (request: any, reply) => {
+type PinStatusRequest = FastifyRequest<{ Params: { id: string } }>;
+fastify.get('/auth/plex/pin/:id/status', async (request: PinStatusRequest, reply) => {
   const pinId = request.params.id;
 
   if (!pinStore.has(pinId)) {
@@ -87,8 +96,9 @@ fastify.get('/auth/plex/pin/:id/status', async (request: any, reply) => {
         pinId,
         tokenLength: authToken.length,
       }, 'Plex authentication successful');
-      // TODO: Save authToken to SQLite database mapping it to a user/server
-      return reply.send({ status: 'authenticated', token: 'saved' }); // Never send the real token to frontend
+      // TODO: Save authToken to SQLite database mapping it to a user/server.
+      // Until persistence is implemented, do NOT advertise success — token is lost on restart.
+      return reply.send({ status: 'authenticated', persisted: false });
     }
 
     logger.debug({ pinId, expiresAt }, 'Plex PIN still pending');

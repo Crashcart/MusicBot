@@ -29,9 +29,10 @@ sudo lsof -iTCP:3000-3100 -sTCP:LISTEN
    sudo kill -9 <PID>
    ```
 
-3. Use port 0 for automatic assignment:
-   ```
-   WEB_PORT=0
+3. Re-run the installer — it auto-detects the next free port in 3000-3099
+   and writes the chosen value to `.env`:
+   ```bash
+   sudo /opt/musicbot/install.sh
    ```
 
 ### Permission Denied on Port
