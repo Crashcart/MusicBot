@@ -39,10 +39,10 @@ fastify.post('/auth/plex/pin', async (request, reply) => {
     const { id, code } = response.data;
     pinStore.set(id.toString(), response.data);
 
-    logger.info('Successfully obtained Plex PIN', {
+    logger.info({
       pinId: id,
       expiresIn: response.data.expiresIn,
-    });
+    }, 'Successfully obtained Plex PIN');
 
     return reply.send({
       pinId: id,
@@ -50,13 +50,13 @@ fastify.post('/auth/plex/pin', async (request, reply) => {
       authUrl: `https://app.plex.tv/auth#?clientID=${PLEX_CLIENT_IDENTIFIER}&code=${code}&context[device][product]=MusicBot`
     });
   } catch (error) {
-    const errorDetails = {
+    logger.error({
+      err: error,
       message: error instanceof Error ? error.message : String(error),
       code: axios.isAxiosError(error) ? error.code : 'unknown',
       status: axios.isAxiosError(error) ? error.response?.status : 'no-response',
       timeout: axios.isAxiosError(error) ? error.message.includes('timeout') : false,
-    };
-    logger.error('Failed to request Plex PIN', error, errorDetails);
+    }, 'Failed to request Plex PIN');
     return reply.status(500).send({ error: 'Failed to communicate with Plex API' });
   }
 });
@@ -66,12 +66,12 @@ fastify.get('/auth/plex/pin/:id/status', async (request: any, reply) => {
   const pinId = request.params.id;
 
   if (!pinStore.has(pinId)) {
-    logger.warn('PIN status check requested for non-existent PIN', { pinId });
+    logger.warn({ pinId }, 'PIN status check requested for non-existent PIN');
     return reply.status(404).send({ error: 'PIN not found' });
   }
 
   try {
-    logger.debug('Checking Plex PIN status', { pinId });
+    logger.debug({ pinId }, 'Checking Plex PIN status');
     const response = await axios.get(`https://plex.tv/api/v2/pins/${pinId}`, {
       timeout: PLEX_API_TIMEOUT_MS,
       headers: {
@@ -83,52 +83,54 @@ fastify.get('/auth/plex/pin/:id/status', async (request: any, reply) => {
     const { authToken, expiresAt } = response.data;
 
     if (authToken) {
-      logger.info('Plex authentication successful', {
+      logger.info({
         pinId,
         tokenLength: authToken.length,
-      });
+      }, 'Plex authentication successful');
       // TODO: Save authToken to SQLite database mapping it to a user/server
       return reply.send({ status: 'authenticated', token: 'saved' }); // Never send the real token to frontend
     }
 
-    logger.debug('Plex PIN still pending', { pinId, expiresAt });
+    logger.debug({ pinId, expiresAt }, 'Plex PIN still pending');
     return reply.send({ status: 'pending' });
   } catch (error) {
-    const errorDetails = {
+    logger.error({
+      err: error,
       message: error instanceof Error ? error.message : String(error),
       code: axios.isAxiosError(error) ? error.code : 'unknown',
       status: axios.isAxiosError(error) ? error.response?.status : 'no-response',
       pinId,
-    };
-    logger.error('Failed to check Plex PIN status', error, errorDetails);
+    }, 'Failed to check Plex PIN status');
     return reply.status(500).send({ error: 'Failed to verify PIN status' });
   }
 });
 
 export const startWebPortal = async () => {
   try {
-    logger.info('Starting web portal server', { port: PORT });
+    logger.info({ port: PORT }, 'Starting web portal server');
     await fastify.listen({ port: PORT, host: '0.0.0.0' });
     logger.info('Web Portal listening on http://0.0.0.0:' + PORT);
   } catch (err) {
-    const errorDetails = {
+    const errorCode = (err as any)?.code || 'unknown';
+    const baseDetails = {
+      err,
       message: err instanceof Error ? err.message : String(err),
       port: PORT,
-      code: (err as any)?.code || 'unknown',
+      code: errorCode,
     };
     // EADDRINUSE = port already in use, EACCES = permission denied
-    if ((err as any)?.code === 'EADDRINUSE') {
-      logger.error('Failed to start web portal: Port already in use', err, {
-        ...errorDetails,
+    if (errorCode === 'EADDRINUSE') {
+      logger.error({
+        ...baseDetails,
         hint: `Port ${PORT} is already bound. Check WEB_PORT in .env or kill the conflicting process.`,
-      });
-    } else if ((err as any)?.code === 'EACCES') {
-      logger.error('Failed to start web portal: Permission denied', err, {
-        ...errorDetails,
+      }, 'Failed to start web portal: Port already in use');
+    } else if (errorCode === 'EACCES') {
+      logger.error({
+        ...baseDetails,
         hint: `Cannot bind to port ${PORT}. Ports < 1024 require root/sudo.`,
-      });
+      }, 'Failed to start web portal: Permission denied');
     } else {
-      logger.error('Failed to start web portal', err, errorDetails);
+      logger.error(baseDetails, 'Failed to start web portal');
     }
     process.exit(1);
   }

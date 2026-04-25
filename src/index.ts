@@ -33,10 +33,11 @@ setupCommandListener(client, lidarrClient);
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 if (DISCORD_TOKEN && DISCORD_TOKEN !== 'your_discord_bot_token') {
   client.login(DISCORD_TOKEN).catch(err => {
-    logger.error('Failed to login to Discord', err, {
+    logger.error({
+      err,
       tokenLength: DISCORD_TOKEN.length,
       tokenPrefix: DISCORD_TOKEN.substring(0, 4),
-    });
+    }, 'Failed to login to Discord');
     process.exit(1);
   });
 } else {
@@ -45,17 +46,19 @@ if (DISCORD_TOKEN && DISCORD_TOKEN !== 'your_discord_bot_token') {
 
 // Global error handlers
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', reason, {
+  logger.error({
+    err: reason,
     promise: String(promise),
     type: typeof reason,
-  });
+  }, 'Unhandled Promise Rejection');
 });
 
 process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', error, {
+  logger.error({
+    err: error,
     stack: error instanceof Error ? error.stack : 'N/A',
     message: error instanceof Error ? error.message : String(error),
-  });
+  }, 'Uncaught Exception');
   process.exit(1);
 });
 
